@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Hệ thống quản lý tài liệu và bài tập hiện đại">
+    <meta name="theme-color" content="#667eea">
+    <title>Quản Lý Tài Liệu & Bài Tập</title>
+    
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json">
+    <link rel="apple-touch-icon" href="/icon-192.png">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <!-- Configuration -->
+    <script src="config.js"></script>
+    
+    <!-- Register Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/service-worker.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker registration failed'));
+        }
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-top">
+                <h1>📚 Quản Lý Tài Liệu & Bài Tập</h1>
+                <div class="header-actions">
+                    <div id="points-display" onclick="showGamificationDashboard()" style="cursor: pointer;" title="Click để xem thành tích">
+                        Level 1 | 0 XP
+                    </div>
+                    <div class="user-info" id="user-info">
+                        <span class="user-name" id="user-name">Loading...</span>
+                        <div class="user-dropdown">
+                            <button onclick="showProfile()">👤 Hồ sơ</button>
+                            <button onclick="showGamificationDashboard()">🎮 Thành Tích</button>
+                            <button onclick="logout()">🚪 Đăng xuất</button>
+                        </div>
+                    </div>
+                    <button class="header-btn" onclick="showPomodoroTimer()" title="Pomodoro Timer">🍅</button>
+                    <button class="header-btn" onclick="showMusicPlayer()" title="Nhạc học tập">🎵</button>
+                    <button class="header-btn" id="voice-btn" onclick="toggleVoiceCommand()" title="Điều khiển giọng nói">🎤</button>
+                    <button class="header-btn" onclick="showAIChat()" title="AI Assistant">🤖</button>
+                    <button class="header-btn" onclick="showThemeSelector()" title="Đổi theme">🎨</button>
+                    <button class="header-btn" onclick="toggleDarkMode()" title="Chế độ tối">🌙</button>
+                    <button class="header-btn" onclick="showBackupModal()" title="Sao lưu & Khôi phục">💾</button>
+                    <button class="header-btn" onclick="showSettingsModal()" title="Cài đặt">⚙️</button>
+                </div>
+            </div>
+            <div class="stats-bar" id="stats-bar"></div>
+            <nav>
+                <button class="tab-btn active" data-tab="documents">📄 Tài Liệu</button>
+                <button class="tab-btn" data-tab="assignments">📝 Bài Tập</button>
+                <button class="tab-btn" data-tab="media">🖼️ Thư Viện</button>
+                <button class="tab-btn" data-tab="notes">📝 Ghi Chú</button>
+                <button class="tab-btn" data-tab="analytics">📊 Thống Kê</button>
+                <button class="tab-btn" data-tab="calendar">📅 Lịch Hẹn</button>
+            </nav>
+        </header>
+
+        <!-- Tab Tài Liệu -->
+        <div id="documents" class="tab-content active">
+            <div class="upload-section">
+                <div class="section-header">
+                    <h2>📤 Tải Lên Tài Liệu</h2>
+                    <div class="upload-options">
+                        <button type="button" class="option-btn" onclick="showTemplateSelector()" title="Sử dụng mẫu">
+                            📄 Mẫu
+                        </button>
+                        <button type="button" class="option-btn" onclick="showBulkUpload()" title="Upload nhiều file">
+                            📁 Bulk
+                        </button>
+                        <button type="button" class="option-btn" onclick="showURLUpload()" title="Upload từ URL">
+                            🔗 URL
+                        </button>
+                        <button type="button" class="option-btn" onclick="connectGoogleDrive()" title="Google Drive">
+                            ☁️ Drive
+                        </button>
+                    </div>
+                </div>
+                <form id="doc-form" class="upload-form">
+                    <input type="text" id="doc-title" placeholder="Tên tài liệu *" required>
+                    <select id="doc-category">
+                        <option value="">Chọn danh mục</option>
+                        <option value="lecture">📖 Bài giảng</option>
+                        <option value="exercise">✏️ Bài tập</option>
+                        <option value="reference">📚 Tài liệu tham khảo</option>
+                        <option value="exam">📝 Đề thi</option>
+                        <option value="other">📁 Khác</option>
+                    </select>
+                    <input type="file" id="doc-file" accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx" required>
+                    <textarea id="doc-description" placeholder="Mô tả tài liệu (tùy chọn)"></textarea>
+                    <div class="file-preview" id="doc-preview"></div>
+                    <button type="submit">
+                        <span class="btn-text">Tải Lên</span>
+                        <span class="btn-loading" style="display:none;">⏳ Đang tải...</span>
+                    </button>
+                </form>
+            </div>
+
+            <div class="list-section">
+                <div class="section-header">
+                    <h2>📋 Danh Sách Tài Liệu</h2>
+                    <div class="view-controls">
+                        <button class="view-btn active" data-view="grid" title="Xem dạng lưới">⊞</button>
+                        <button class="view-btn" data-view="list" title="Xem dạng danh sách">☰</button>
+                    </div>
+                </div>
+                <div class="filter-section">
+                    <input type="text" id="search-docs" placeholder="Tìm kiếm tài liệu...">
+                    <select id="filter-doc-category">
+                        <option value="all">Tất cả danh mục</option>
+                        <option value="lecture">Bài giảng</option>
+                        <option value="exercise">Bài tập</option>
+                        <option value="reference">Tài liệu tham khảo</option>
+                        <option value="exam">Đề thi</option>
+                        <option value="other">Khác</option>
+                    </select>
+                    <select id="sort-docs">
+                        <option value="newest">Mới nhất</option>
+                        <option value="oldest">Cũ nhất</option>
+                        <option value="name">Tên A-Z</option>
+                    </select>
+                </div>
+                <div id="documents-list" class="items-list grid-view">
+                    <div class="loading">Đang tải...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Bài Tập -->
+        <div id="assignments" class="tab-content">
+            <div class="upload-section">
+                <h2>📝 Gửi Bài Tập</h2>
+                <form id="assignment-form" class="upload-form">
+                    <input type="text" id="assignment-title" placeholder="Tên bài tập *" required>
+                    <input type="text" id="assignment-student" placeholder="Tên học sinh *" required>
+                    <input type="email" id="assignment-email" placeholder="Email học sinh (tùy chọn)">
+                    <input type="file" id="assignment-file" accept=".pdf,.doc,.docx,.txt,.zip,.rar" required multiple>
+                    <textarea id="assignment-note" placeholder="Ghi chú (tùy chọn)"></textarea>
+                    <div class="file-preview" id="assignment-preview"></div>
+                    <button type="submit">
+                        <span class="btn-text">Gửi Bài Tập</span>
+                        <span class="btn-loading" style="display:none;">⏳ Đang gửi...</span>
+                    </button>
+                </form>
+            </div>
+
+            <div class="list-section">
+                <h2>📊 Danh Sách Bài Tập Đã Gửi</h2>
+                <div class="filter-section">
+                    <input type="text" id="search-student" placeholder="Tìm theo tên học sinh hoặc bài tập...">
+                    <select id="filter-status">
+                        <option value="all">Tất cả</option>
+                        <option value="pending">Chờ chấm</option>
+                        <option value="graded">Đã chấm</option>
+                    </select>
+                    <select id="sort-assignments">
+                        <option value="newest">Mới nhất</option>
+                        <option value="oldest">Cũ nhất</option>
+                        <option value="grade-high">Điểm cao nhất</option>
+                        <option value="grade-low">Điểm thấp nhất</option>
+                    </select>
+                    <button class="btn-small" onclick="exportAssignments()">📥 Xuất Excel</button>
+                </div>
+                <div id="assignments-list" class="items-list">
+                    <div class="loading">Đang tải...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Thư Viện Media & Links -->
+        <div id="media" class="tab-content">
+            <div class="media-tabs">
+                <button class="media-tab-btn active" data-media-tab="images">🖼️ Hình Ảnh</button>
+                <button class="media-tab-btn" data-media-tab="links">🔗 Liên Kết</button>
+            </div>
+
+            <!-- Sub-tab Hình Ảnh -->
+            <div id="images" class="media-tab-content active">
+                <div class="upload-section">
+                    <h2>📤 Tải Lên Hình Ảnh</h2>
+                    <form id="image-form" class="upload-form">
+                        <input type="text" id="image-title" placeholder="Tiêu đề hình ảnh *" required>
+                        <select id="image-category">
+                            <option value="">Chọn danh mục</option>
+                            <option value="lecture">📖 Bài giảng</option>
+                            <option value="event">🎉 Sự kiện</option>
+                            <option value="certificate">🏆 Chứng chỉ</option>
+                            <option value="diagram">📊 Sơ đồ</option>
+                            <option value="other">📁 Khác</option>
+                        </select>
+                        <input type="file" id="image-file" accept="image/*" multiple required>
+                        <textarea id="image-description" placeholder="Mô tả (tùy chọn)"></textarea>
+                        <div class="image-preview-grid" id="image-preview-grid"></div>
+                        <button type="submit">
+                            <span class="btn-text">Tải Lên</span>
+                            <span class="btn-loading" style="display:none;">⏳ Đang tải...</span>
+                        </button>
+                    </form>
+                </div>
+
+                <div class="list-section">
+                    <div class="section-header">
+                        <h2>🖼️ Thư Viện Hình Ảnh</h2>
+                        <div class="view-controls">
+                            <button class="view-btn active" data-view="grid">⊞</button>
+                            <button class="view-btn" data-view="list">☰</button>
+                        </div>
+                    </div>
+                    <div class="filter-section">
+                        <input type="text" id="search-images" placeholder="Tìm kiếm hình ảnh...">
+                        <select id="filter-image-category">
+                            <option value="all">Tất cả danh mục</option>
+                            <option value="lecture">Bài giảng</option>
+                            <option value="event">Sự kiện</option>
+                            <option value="certificate">Chứng chỉ</option>
+                            <option value="diagram">Sơ đồ</option>
+                            <option value="other">Khác</option>
+                        </select>
+                    </div>
+                    <div id="images-list" class="items-list grid-view gallery-grid">
+                        <div class="loading">Đang tải...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sub-tab Liên Kết -->
+            <div id="links" class="media-tab-content">
+                <div class="upload-section">
+                    <h2>🔗 Thêm Liên Kết</h2>
+                    <form id="link-form" class="upload-form">
+                        <input type="text" id="link-title" placeholder="Tiêu đề liên kết *" required>
+                        <input type="url" id="link-url" placeholder="https://example.com *" required>
+                        <select id="link-category">
+                            <option value="">Chọn loại</option>
+                            <option value="video">🎥 Video</option>
+                            <option value="article">📰 Bài viết</option>
+                            <option value="course">📚 Khóa học</option>
+                            <option value="tool">🛠️ Công cụ</option>
+                            <option value="reference">📖 Tài liệu tham khảo</option>
+                            <option value="other">🔗 Khác</option>
+                        </select>
+                        <textarea id="link-description" placeholder="Mô tả (tùy chọn)"></textarea>
+                        <div class="link-preview" id="link-preview-box"></div>
+                        <button type="submit">
+                            <span class="btn-text">Thêm Liên Kết</span>
+                        </button>
+                    </form>
+                </div>
+
+                <div class="list-section">
+                    <h2>🔗 Danh Sách Liên Kết</h2>
+                    <div class="filter-section">
+                        <input type="text" id="search-links" placeholder="Tìm kiếm liên kết...">
+                        <select id="filter-link-category">
+                            <option value="all">Tất cả loại</option>
+                            <option value="video">Video</option>
+                            <option value="article">Bài viết</option>
+                            <option value="course">Khóa học</option>
+                            <option value="tool">Công cụ</option>
+                            <option value="reference">Tài liệu tham khảo</option>
+                            <option value="other">Khác</option>
+                        </select>
+                    </div>
+                    <div id="links-list" class="items-list">
+                        <div class="loading">Đang tải...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Ghi Chú & To-Do -->
+        <div id="notes" class="tab-content">
+            <div class="notes-container">
+                <!-- Quick Add -->
+                <div class="quick-add-section">
+                    <h2>✍️ Ghi Chú Nhanh</h2>
+                    <div class="quick-add-form">
+                        <input type="text" id="quick-note-title" placeholder="Tiêu đề ghi chú...">
+                        <textarea id="quick-note-content" placeholder="Nội dung ghi chú..." rows="3"></textarea>
+                        <div class="quick-add-actions">
+                            <select id="note-color">
+                                <option value="yellow">🟨 Vàng</option>
+                                <option value="blue">🟦 Xanh dương</option>
+                                <option value="green">🟩 Xanh lá</option>
+                                <option value="pink">🟪 Hồng</option>
+                                <option value="orange">🟧 Cam</option>
+                            </select>
+                            <button onclick="addQuickNote()">➕ Thêm Ghi Chú</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notes Grid -->
+                <div class="notes-grid-section">
+                    <div class="section-header">
+                        <h2>📋 Ghi Chú Của Tôi</h2>
+                        <div class="notes-filter">
+                            <button class="filter-btn active" data-filter="all">Tất cả</button>
+                            <button class="filter-btn" data-filter="pinned">📌 Ghim</button>
+                            <button class="filter-btn" data-filter="archived">📦 Lưu trữ</button>
+                        </div>
+                    </div>
+                    <div id="notes-grid" class="notes-grid">
+                        <div class="loading">Đang tải...</div>
+                    </div>
+                </div>
+
+                <!-- To-Do List -->
+                <div class="todo-section">
+                    <h2>✅ Danh Sách Công Việc</h2>
+                    <div class="todo-add">
+                        <input type="text" id="todo-input" placeholder="Thêm công việc mới...">
+                        <button onclick="addTodo()">➕</button>
+                    </div>
+                    <div id="todo-list" class="todo-list">
+                        <div class="loading">Đang tải...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab Thống Kê -->
+        <div id="analytics" class="tab-content">
+            <div class="analytics-grid">
+                <div class="analytics-card">
+                    <div class="card-icon">📄</div>
+                    <div class="card-content">
+                        <h3>Tổng Tài Liệu</h3>
+                        <div class="card-value" id="total-docs">0</div>
+                    </div>
+                </div>
+                <div class="analytics-card">
+                    <div class="card-icon">📝</div>
+                    <div class="card-content">
+                        <h3>Tổng Bài Tập</h3>
+                        <div class="card-value" id="total-assignments">0</div>
+                    </div>
+                </div>
+                <div class="analytics-card">
+                    <div class="card-icon">⏳</div>
+                    <div class="card-content">
+                        <h3>Chờ Chấm</h3>
+                        <div class="card-value" id="pending-count">0</div>
+                    </div>
+                </div>
+                <div class="analytics-card">
+                    <div class="card-icon">⭐</div>
+                    <div class="card-content">
+                        <h3>Điểm Trung Bình</h3>
+                        <div class="card-value" id="avg-grade">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="charts-section">
+                <div class="chart-card">
+                    <h2>📈 Bảng Xếp Hạng Học Sinh</h2>
+                    <div id="leaderboard" class="leaderboard"></div>
+                </div>
+                <div class="chart-card">
+                    <h2>📊 Phân Bố Điểm</h2>
+                    <div id="grade-distribution" class="grade-chart"></div>
+                </div>
+            </div>
+
+            <div class="recent-activity">
+                <h2>🕐 Hoạt Động Gần Đây</h2>
+                <div id="activity-log" class="activity-list"></div>
+            </div>
+        </div>
+
+        <!-- Tab Lịch Hẹn -->
+        <div id="calendar" class="tab-content">
+            <div class="calendar-section">
+                <h2>📅 Thêm Lịch Hẹn / Deadline</h2>
+                <form id="deadline-form" class="upload-form">
+                    <input type="text" id="deadline-title" placeholder="Tiêu đề *" required>
+                    <input type="datetime-local" id="deadline-date" required>
+                    <select id="deadline-type">
+                        <option value="deadline">⏰ Deadline</option>
+                        <option value="meeting">👥 Họp</option>
+                        <option value="exam">📝 Kiểm tra</option>
+                        <option value="event">🎉 Sự kiện</option>
+                    </select>
+                    <textarea id="deadline-description" placeholder="Mô tả (tùy chọn)"></textarea>
+                    <button type="submit">
+                        <span class="btn-text">Thêm Lịch</span>
+                    </button>
+                </form>
+            </div>
+
+            <div class="list-section">
+                <h2>📋 Danh Sách Lịch Hẹn</h2>
+                <div class="filter-section">
+                    <select id="filter-deadline-type">
+                        <option value="all">Tất cả</option>
+                        <option value="deadline">Deadline</option>
+                        <option value="meeting">Họp</option>
+                        <option value="exam">Kiểm tra</option>
+                        <option value="event">Sự kiện</option>
+                    </select>
+                    <select id="filter-deadline-status">
+                        <option value="all">Tất cả</option>
+                        <option value="upcoming">Sắp tới</option>
+                        <option value="overdue">Quá hạn</option>
+                        <option value="completed">Hoàn thành</option>
+                    </select>
+                </div>
+                <div id="deadlines-list" class="items-list">
+                    <div class="loading">Đang tải...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- Backup Modal -->
+    <div id="backup-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>💾 Sao Lưu & Khôi Phục</h2>
+                <button class="modal-close" onclick="closeBackupModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="backup-section">
+                    <h3>📤 Xuất Dữ Liệu</h3>
+                    <p>Tải xuống toàn bộ dữ liệu của bạn</p>
+                    <button class="btn-primary" onclick="exportAllData()">📥 Xuất Tất Cả Dữ Liệu (JSON)</button>
+                    <button class="btn-primary" onclick="exportDatabase()">💾 Tải Database (SQLite)</button>
+                </div>
+                <div class="backup-section">
+                    <h3>📥 Nhập Dữ Liệu</h3>
+                    <p>Khôi phục dữ liệu từ file backup</p>
+                    <input type="file" id="import-file" accept=".json" style="display:none">
+                    <button class="btn-primary" onclick="document.getElementById('import-file').click()">📤 Nhập Dữ Liệu</button>
+                </div>
+                <div class="backup-section">
+                    <h3>🗑️ Xóa Dữ Liệu</h3>
+                    <p class="warning-text">⚠️ Cảnh báo: Hành động này không thể hoàn tác!</p>
+                    <button class="btn-danger" onclick="clearAllData()">🗑️ Xóa Toàn Bộ Dữ Liệu</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ Cài Đặt</h2>
+                <button class="modal-close" onclick="closeSettingsModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-group">
+                    <h3>🎨 Giao Diện</h3>
+                    <label class="setting-item">
+                        <input type="checkbox" id="setting-dark-mode">
+                        <span>Chế độ tối</span>
+                    </label>
+                    <label class="setting-item">
+                        <input type="checkbox" id="setting-animations" checked>
+                        <span>Hiệu ứng chuyển động</span>
+                    </label>
+                </div>
+                <div class="settings-group">
+                    <h3>🔔 Thông Báo</h3>
+                    <label class="setting-item">
+                        <input type="checkbox" id="setting-notifications" checked>
+                        <span>Bật thông báo</span>
+                    </label>
+                    <label class="setting-item">
+                        <input type="checkbox" id="setting-deadline-alerts" checked>
+                        <span>Cảnh báo deadline</span>
+                    </label>
+                </div>
+                <div class="settings-group">
+                    <h3>📊 Hiển Thị</h3>
+                    <label class="setting-item">
+                        <span>Số items mỗi trang:</span>
+                        <select id="setting-items-per-page">
+                            <option value="10">10</option>
+                            <option value="20" selected>20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </label>
+                </div>
+                <button class="btn-primary" onclick="saveSettings()">💾 Lưu Cài Đặt</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Modal (will be created dynamically) -->
+
+    <!-- Floating Action Button -->
+    <div class="fab-container">
+        <button class="fab">➕</button>
+        <div class="fab-menu">
+            <div class="fab-menu-item" onclick="document.getElementById('doc-file').click()">
+                📄 Upload Tài Liệu
+            </div>
+            <div class="fab-menu-item" onclick="document.getElementById('assignment-file').click()">
+                📝 Nộp Bài Tập
+            </div>
+            <div class="fab-menu-item" onclick="addQuickNote()">
+                ✍️ Ghi Chú Nhanh
+            </div>
+            <div class="fab-menu-item" onclick="showPomodoroTimer()">
+                🍅 Pomodoro Timer
+            </div>
+            <div class="fab-menu-item" onclick="showMusicPlayer()">
+                🎵 Nhạc Học Tập
+            </div>
+            <div class="fab-menu-item" onclick="showAIChat()">
+                🤖 AI Assistant
+            </div>
+            <div class="fab-menu-item" onclick="showGamificationDashboard()">
+                🎮 Thành Tích
+            </div>
+            <div class="fab-menu-item" onclick="showActiveUsers()">
+                👥 Users Online
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Help -->
+    <div id="shortcuts-help" class="shortcuts-help">
+        <h3 style="margin-bottom: 15px;">⌨️ Phím Tắt</h3>
+        <div class="shortcut-item">
+            <span>Upload file</span>
+            <span class="shortcut-key">Ctrl + U</span>
+        </div>
+        <div class="shortcut-item">
+            <span>Tìm kiếm</span>
+            <span class="shortcut-key">Ctrl + F</span>
+        </div>
+        <div class="shortcut-item">
+            <span>Đóng modal</span>
+            <span class="shortcut-key">ESC</span>
+        </div>
+        <button onclick="document.getElementById('shortcuts-help').classList.remove('show')" 
+                style="margin-top: 10px; width: 100%;">Đóng</button>
+    </div>
+
+    <script>
+        // Check authentication before loading app
+        const token = localStorage.getItem('auth_token');
+        if (!token) {
+            window.location.href = '/login.html';
+        }
+        
+        // Verify token
+        fetch('http://localhost:3000/api/auth/verify', {
+            headers: { 'Authorization': `Bearer ${token}` }
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (!result.valid) {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user_info');
+                window.location.href = '/login.html';
+            } else {
+                // Update user info
+                localStorage.setItem('user_info', JSON.stringify(result.user));
+                document.getElementById('user-name').textContent = result.user.fullName || result.user.username;
+            }
+        })
+        .catch(() => {
+            window.location.href = '/login.html';
+        });
+        
+        // Add token to all API requests
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options = {}) {
+            if (url.includes('/api/') && !url.includes('/auth/')) {
+                options.headers = options.headers || {};
+                options.headers['Authorization'] = `Bearer ${token}`;
+            }
+            return originalFetch(url, options);
+        };
+        
+        function logout() {
+            if (!confirm('Bạn có chắc muốn đăng xuất?')) return;
+            
+            fetch('http://localhost:3000/api/auth/logout', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(() => {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user_info');
+                localStorage.removeItem('remember_me');
+                window.location.href = '/login.html';
+            });
+        }
+        
+        function showProfile() {
+            const user = JSON.parse(localStorage.getItem('user_info'));
+            const modal = document.createElement('div');
+            modal.className = 'modal show';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h2>👤 Hồ Sơ Người Dùng</h2>
+                        <button class="modal-close" onclick="this.closest('.modal').remove()">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="profile-info">
+                            <div class="profile-avatar">
+                                ${user.avatar ? `<img src="${user.avatar}" alt="Avatar">` : '👤'}
+                            </div>
+                            <div class="profile-details">
+                                <p><strong>Họ tên:</strong> ${user.fullName}</p>
+                                <p><strong>Tên đăng nhập:</strong> ${user.username}</p>
+                                <p><strong>Email:</strong> ${user.email}</p>
+                                <p><strong>Vai trò:</strong> ${getRoleName(user.role)}</p>
+                            </div>
+                        </div>
+                        <button class="btn-primary" onclick="changePassword()">🔒 Đổi Mật Khẩu</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+        
+        function getRoleName(role) {
+            const roles = {
+                student: '👨‍🎓 Học sinh',
+                teacher: '👨‍🏫 Giáo viên',
+                admin: '👑 Quản trị viên'
+            };
+            return roles[role] || role;
+        }
+        
+        function changePassword() {
+            const oldPassword = prompt('Nhập mật khẩu cũ:');
+            if (!oldPassword) return;
+            
+            const newPassword = prompt('Nhập mật khẩu mới (tối thiểu 6 ký tự):');
+            if (!newPassword || newPassword.length < 6) {
+                alert('Mật khẩu mới phải có ít nhất 6 ký tự!');
+                return;
+            }
+            
+            fetch('http://localhost:3000/api/auth/change-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ oldPassword, newPassword })
+            })
+            .then(res => res.json())
+            .then(result => {
+                if (result.message) {
+                    alert('✅ ' + result.message);
+                } else {
+                    alert('❌ ' + result.error);
+                }
+            });
+        }
+    </script>
+    <script src="app.js"></script>
+    <script src="features.js"></script>
+    <script src="media.js"></script>
+    <script src="advanced.js"></script>
+    <script src="notes.js"></script>
+    <script src="modern-features.js"></script>
+    <script src="fun-features.js"></script>
+    
+    <script>
+        // Hook gamification into existing functions after all scripts loaded
+        window.addEventListener('load', function() {
+            // Wrap upload document
+            const originalUploadDocument = window.uploadDocument;
+            if (originalUploadDocument) {
+                window.uploadDocument = async function() {
+                    const result = await originalUploadDocument.apply(this, arguments);
+                    if (window.addPoints) {
+                        window.addPoints(10, 'Upload tài liệu');
+                        window.unlockAchievement('first_upload');
+                    }
+                    return result;
+                };
+            }
+            
+            // Wrap submit assignment
+            const originalSubmitAssignment = window.submitAssignment;
+            if (originalSubmitAssignment) {
+                window.submitAssignment = async function() {
+                    const result = await originalSubmitAssignment.apply(this, arguments);
+                    if (window.addPoints) {
+                        window.addPoints(15, 'Nộp bài tập');
+                        window.unlockAchievement('first_assignment');
+                    }
+                    return result;
+                };
+            }
+            
+            // Wrap add quick note
+            const originalAddQuickNote = window.addQuickNote;
+            if (originalAddQuickNote) {
+                window.addQuickNote = async function() {
+                    const result = await originalAddQuickNote.apply(this, arguments);
+                    if (window.addPoints) {
+                        window.addPoints(5, 'Tạo ghi chú');
+                    }
+                    return result;
+                };
+            }
+        });
+    </script>
+</body>
+</html>

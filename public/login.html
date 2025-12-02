@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng Nhập - Quản Lý Tài Liệu</title>
+    <link rel="stylesheet" href="auth.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-box">
+            <div class="auth-header">
+                <h1>📚 Quản Lý Tài Liệu</h1>
+                <p>Đăng nhập để tiếp tục</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" data-tab="login">Đăng Nhập</button>
+                <button class="auth-tab" data-tab="register">Đăng Ký</button>
+            </div>
+
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form active">
+                <div class="form-group">
+                    <label>📧 Email hoặc Tên đăng nhập</label>
+                    <input type="text" id="login-username" placeholder="email@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>🔒 Mật khẩu</label>
+                    <input type="password" id="login-password" placeholder="••••••••" required>
+                </div>
+                <div class="form-options">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="remember-me">
+                        <span>Ghi nhớ đăng nhập</span>
+                    </label>
+                    <a href="#" class="forgot-link">Quên mật khẩu?</a>
+                </div>
+                <button type="submit" class="auth-btn">
+                    <span class="btn-text">Đăng Nhập</span>
+                    <span class="btn-loading" style="display:none;">⏳ Đang xử lý...</span>
+                </button>
+            </form>
+
+            <!-- Register Form -->
+            <form id="register-form" class="auth-form">
+                <div class="form-group">
+                    <label>👤 Họ và tên</label>
+                    <input type="text" id="register-fullname" placeholder="Nguyễn Văn A" required>
+                </div>
+                <div class="form-group">
+                    <label>📧 Email</label>
+                    <input type="email" id="register-email" placeholder="email@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label>🔑 Tên đăng nhập</label>
+                    <input type="text" id="register-username" placeholder="username" required>
+                </div>
+                <div class="form-group">
+                    <label>🔒 Mật khẩu</label>
+                    <input type="password" id="register-password" placeholder="••••••••" required>
+                    <small class="form-hint">Tối thiểu 6 ký tự</small>
+                </div>
+                <div class="form-group">
+                    <label>🔒 Xác nhận mật khẩu</label>
+                    <input type="password" id="register-confirm" placeholder="••••••••" required>
+                </div>
+                <div class="form-group">
+                    <label>👥 Vai trò</label>
+                    <select id="register-role">
+                        <option value="student">Học sinh</option>
+                        <option value="teacher">Giáo viên</option>
+                        <option value="admin">Quản trị viên</option>
+                    </select>
+                </div>
+                <button type="submit" class="auth-btn">
+                    <span class="btn-text">Đăng Ký</span>
+                    <span class="btn-loading" style="display:none;">⏳ Đang xử lý...</span>
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                <p>Hoặc đăng nhập với</p>
+                <div class="social-login">
+                    <button class="social-btn google" onclick="loginWithGoogle()">
+                        <span>G</span> Google
+                    </button>
+                    <button class="social-btn facebook" onclick="loginWithFacebook()">
+                        <span>f</span> Facebook
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script src="auth.js"></script>
+</body>
+</html>
