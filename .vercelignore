@@ -1,0 +1,6 @@
+server.js
+database.db
+uploads/
+node_modules/
+.env
+*.log
