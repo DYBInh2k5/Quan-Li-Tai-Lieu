@@ -1,5 +1,5 @@
 // Vercel Serverless API - Stats endpoint
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -14,4 +14,4 @@ module.exports = async (req, res) => {
         pendingAssignments: 0,
         averageGrade: 0
     });
-};
+}

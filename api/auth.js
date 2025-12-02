@@ -1,18 +1,20 @@
 // Vercel Serverless API - Auth endpoints
 const crypto = require('crypto');
 
-// In-memory user storage
-const users = [
-    {
-        id: 1,
-        username: 'admin',
-        email: 'admin@example.com',
-        password: crypto.createHash('sha256').update('admin123').digest('hex'),
-        fullName: 'Administrator',
-        role: 'admin',
-        token: null
-    }
-];
+// In-memory user storage (global để persist giữa các requests)
+if (!global.users) {
+    global.users = [
+        {
+            id: 1,
+            username: 'admin',
+            email: 'admin@example.com',
+            password: crypto.createHash('sha256').update('admin123').digest('hex'),
+            fullName: 'Administrator',
+            role: 'admin',
+            token: null
+        }
+    ];
+}
 
 function hashPassword(password) {
     return crypto.createHash('sha256').update(password).digest('hex');
@@ -22,7 +24,7 @@ function generateToken() {
     return crypto.randomBytes(32).toString('hex');
 }
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -32,7 +34,9 @@ module.exports = async (req, res) => {
         return res.status(200).end();
     }
 
-    const path = req.url.replace('/api/auth', '');
+    const users = global.users;
+    const { pathname } = new URL(req.url, `http://${req.headers.host}`);
+    const path = pathname.replace('/api/auth', '');
 
     try {
         // Login
@@ -168,4 +172,4 @@ module.exports = async (req, res) => {
         console.error('Error:', error);
         return res.status(500).json({ error: error.message });
     }
-};
+}

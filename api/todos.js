@@ -1,7 +1,9 @@
 // Vercel Serverless API - Todos endpoint
-const todos = [];
+if (!global.todos) {
+    global.todos = [];
+}
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -11,8 +13,8 @@ module.exports = async (req, res) => {
     }
 
     if (req.method === 'GET') {
-        return res.json(todos);
+        return res.json(global.todos);
     }
 
     return res.status(200).json({ message: 'OK' });
-};
+}
