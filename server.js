@@ -60,6 +60,8 @@ const db = new sqlite3.Database(dbPath, (err) => {
 });
 
 function initDatabase() {
+    console.log('🔧 Initializing database...');
+    
     // Bảng tài liệu
     db.run(`CREATE TABLE IF NOT EXISTS documents (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -201,6 +203,29 @@ function initDatabase() {
     )`);
 
     console.log('✅ Database schema initialized');
+    
+    // Tạo tài khoản admin mặc định
+    createDefaultAdmin();
+}
+
+function createDefaultAdmin() {
+    db.get('SELECT * FROM users WHERE username = ?', ['admin'], (err, user) => {
+        if (!user) {
+            const hashedPassword = hashPassword('admin123');
+            const sql = `INSERT INTO users (username, email, fullName, password, role) 
+                         VALUES (?, ?, ?, ?, ?)`;
+            
+            db.run(sql, ['admin', 'admin@example.com', 'Administrator', hashedPassword, 'admin'], function(err) {
+                if (err) {
+                    console.error('❌ Error creating admin:', err);
+                } else {
+                    console.log('✅ Default admin created (username: admin, password: admin123)');
+                }
+            });
+        } else {
+            console.log('✅ Admin account already exists');
+        }
+    });
 }
 
 // Helper function: Log activity
