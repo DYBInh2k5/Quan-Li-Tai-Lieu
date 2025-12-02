@@ -1,10 +1,6 @@
-// Vercel Serverless Function
+// Vercel Serverless Function - Simplified version
 const express = require('express');
-const multer = require('multer');
 const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
-const fs = require('fs');
 const crypto = require('crypto');
 
 const app = express();
@@ -13,93 +9,25 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Tạo thư mục uploads trong /tmp cho Vercel
-const uploadsDir = '/tmp/uploads';
-const docsDir = path.join(uploadsDir, 'documents');
-const assignmentsDir = path.join(uploadsDir, 'assignments');
-const imagesDir = path.join(uploadsDir, 'images');
-
-[uploadsDir, docsDir, assignmentsDir, imagesDir].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+// In-memory storage (tạm thời cho demo)
+const users = [
+    {
+        id: 1,
+        username: 'admin',
+        email: 'admin@example.com',
+        password: crypto.createHash('sha256').update('admin123').digest('hex'),
+        fullName: 'Administrator',
+        role: 'admin',
+        token: null
     }
-});
+];
 
-// Cấu hình Multer
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        const type = req.body.type || 'documents';
-        let dir = docsDir;
-        if (type === 'assignments') dir = assignmentsDir;
-        else if (type === 'images') dir = imagesDir;
-        cb(null, dir);
-    },
-    filename: function (req, file, cb) {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + '-' + file.originalname);
-    }
-});
+const documents = [];
+const assignments = [];
+const notes = [];
+const todos = [];
 
-const upload = multer({ 
-    storage: storage,
-    limits: { fileSize: 50 * 1024 * 1024 }
-});
-
-// Database trong /tmp cho Vercel
-const dbPath = '/tmp/database.db';
-let db;
-
-function initDB() {
-    return new Promise((resolve, reject) => {
-        db = new sqlite3.Database(dbPath, (err) => {
-            if (err) {
-                console.error('Database error:', err);
-                reject(err);
-            } else {
-                console.log('✅ Database connected');
-                initDatabase().then(resolve).catch(reject);
-            }
-        });
-    });
-}
-
-function initDatabase() {
-    return new Promise((resolve) => {
-        // Bảng users
-        db.run(`CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            fullName TEXT,
-            role TEXT DEFAULT 'student',
-            avatar TEXT,
-            token TEXT,
-            createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-            lastLogin DATETIME
-        )`, () => {
-            // Tạo admin mặc định
-            createDefaultAdmin();
-            resolve();
-        });
-    });
-}
-
-function createDefaultAdmin() {
-    db.get('SELECT * FROM users WHERE username = ?', ['admin'], (err, user) => {
-        if (!user) {
-            const hashedPassword = hashPassword('admin123');
-            const sql = `INSERT INTO users (username, email, fullName, password, role) 
-                         VALUES (?, ?, ?, ?, ?)`;
-            
-            db.run(sql, ['admin', 'admin@example.com', 'Administrator', hashedPassword, 'admin'], (err) => {
-                if (!err) {
-                    console.log('✅ Admin created: admin/admin123');
-                }
-            });
-        }
-    });
-}
+// Helper functions
 
 function hashPassword(password) {
     return crypto.createHash('sha256').update(password).digest('hex');
@@ -116,13 +44,13 @@ function verifyToken(req, res, next) {
         return res.status(401).json({ error: 'Token không hợp lệ' });
     }
     
-    db.get('SELECT * FROM users WHERE token = ?', [token], (err, user) => {
-        if (err || !user) {
-            return res.status(401).json({ error: 'Token không hợp lệ' });
-        }
-        req.user = user;
-        next();
-    });
+    const user = users.find(u => u.token === token);
+    if (!user) {
+        return res.status(401).json({ error: 'Token không hợp lệ' });
+    }
+    
+    req.user = user;
+    next();
 }
 
 // ===== API ROUTES =====
@@ -148,23 +76,24 @@ app.post('/api/auth/register', (req, res) => {
         return res.status(400).json({ error: 'Mật khẩu phải có ít nhất 6 ký tự' });
     }
     
-    db.get('SELECT * FROM users WHERE username = ? OR email = ?', [username, email], (err, existingUser) => {
-        if (existingUser) {
-            return res.status(400).json({ error: 'Tên đăng nhập hoặc email đã tồn tại' });
-        }
-        
-        const hashedPassword = hashPassword(password);
-        const sql = `INSERT INTO users (username, email, fullName, password, role) 
-                     VALUES (?, ?, ?, ?, ?)`;
-        
-        db.run(sql, [username, email, fullName, hashedPassword, role || 'student'], function(err) {
-            if (err) {
-                res.status(500).json({ error: err.message });
-                return;
-            }
-            res.json({ id: this.lastID, message: 'Đăng ký thành công' });
-        });
-    });
+    const existingUser = users.find(u => u.username === username || u.email === email);
+    if (existingUser) {
+        return res.status(400).json({ error: 'Tên đăng nhập hoặc email đã tồn tại' });
+    }
+    
+    const newUser = {
+        id: users.length + 1,
+        username,
+        email,
+        fullName,
+        password: hashPassword(password),
+        role: role || 'student',
+        token: null,
+        createdAt: new Date().toISOString()
+    };
+    
+    users.push(newUser);
+    res.json({ id: newUser.id, message: 'Đăng ký thành công' });
 });
 
 // Login
@@ -176,40 +105,27 @@ app.post('/api/auth/login', (req, res) => {
     }
     
     const hashedPassword = hashPassword(password);
+    const user = users.find(u => (u.username === username || u.email === username) && u.password === hashedPassword);
     
-    db.get('SELECT * FROM users WHERE (username = ? OR email = ?) AND password = ?', 
-        [username, username, hashedPassword], (err, user) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        
-        if (!user) {
-            return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
-        }
-        
-        const token = generateToken();
-        
-        db.run('UPDATE users SET token = ?, lastLogin = CURRENT_TIMESTAMP WHERE id = ?', 
-            [token, user.id], (err) => {
-            if (err) {
-                res.status(500).json({ error: err.message });
-                return;
-            }
-            
-            res.json({
-                token,
-                user: {
-                    id: user.id,
-                    username: user.username,
-                    email: user.email,
-                    fullName: user.fullName,
-                    role: user.role,
-                    avatar: user.avatar
-                },
-                message: 'Đăng nhập thành công'
-            });
-        });
+    if (!user) {
+        return res.status(401).json({ error: 'Tên đăng nhập hoặc mật khẩu không đúng' });
+    }
+    
+    const token = generateToken();
+    user.token = token;
+    user.lastLogin = new Date().toISOString();
+    
+    res.json({
+        token,
+        user: {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            fullName: user.fullName,
+            role: user.role,
+            avatar: user.avatar
+        },
+        message: 'Đăng nhập thành công'
     });
 });
 
@@ -230,13 +146,8 @@ app.get('/api/auth/verify', verifyToken, (req, res) => {
 
 // Logout
 app.post('/api/auth/logout', verifyToken, (req, res) => {
-    db.run('UPDATE users SET token = NULL WHERE id = ?', [req.user.id], (err) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        res.json({ message: 'Đăng xuất thành công' });
-    });
+    req.user.token = null;
+    res.json({ message: 'Đăng xuất thành công' });
 });
 
 // Get profile
@@ -263,19 +174,21 @@ app.get('/api/stats', (req, res) => {
     });
 });
 
-// Initialize database before handling requests
-let dbInitialized = false;
+// Additional endpoints for compatibility
+app.get('/api/documents', (req, res) => {
+    res.json(documents);
+});
 
-app.use(async (req, res, next) => {
-    if (!dbInitialized) {
-        try {
-            await initDB();
-            dbInitialized = true;
-        } catch (err) {
-            console.error('DB init error:', err);
-        }
-    }
-    next();
+app.get('/api/assignments', (req, res) => {
+    res.json(assignments);
+});
+
+app.get('/api/notes', (req, res) => {
+    res.json(notes);
+});
+
+app.get('/api/todos', (req, res) => {
+    res.json(todos);
 });
 
 // Export for Vercel
